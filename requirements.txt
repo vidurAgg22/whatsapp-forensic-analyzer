@@ -1,0 +1,12 @@
+django>=4.2,<5.0
+python-dotenv
+pillow
+nltk
+vaderSentiment
+wordcloud
+matplotlib
+deep-translator
+gunicorn
+whitenoise
+psycopg2-binary
+dj-database-url

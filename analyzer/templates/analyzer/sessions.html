@@ -1,0 +1,44 @@
+{% extends 'analyzer/base.html' %}
+{% block title %}All Sessions{% endblock %}
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-6">All Chat Sessions</h1>
+{% if sessions %}
+<div class="space-y-4">
+    {% for s in sessions %}
+    <div class="card flex items-center justify-between">
+        <div>
+            <p class="text-white font-semibold text-lg">{{ s.session_name }}</p>
+            <p class="text-slate-400 text-sm">
+                {{ s.total_messages }} messages ·
+                {{ s.total_members }} members ·
+                {{ s.device_type }} ·
+                {{ s.uploaded_at|date:"d M Y, H:i" }}
+            </p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{% url 'dashboard' s.id %}"
+               class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm transition">
+                Dashboard
+            </a>
+            <a href="{% url 'forensics' s.id %}"
+               class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                Forensics
+            </a>
+            <form method="POST" action="{% url 'delete_session' s.id %}"
+                  onsubmit="return confirm('Delete this session?')">
+                {% csrf_token %}
+                <button class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm transition">
+                    Delete
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card text-center py-16">
+    <p class="text-slate-400">No sessions yet. <a href="{% url 'home' %}" class="text-green-400">Upload a chat →</a></p>
+</div>
+{% endif %}
+{% endblock %}
+

@@ -1,0 +1,429 @@
+{% extends 'analyzer/base.html' %}
+{% block title %}Dashboard — {{ session.session_name }}{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="flex flex-wrap items-start justify-between gap-4 mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-white">{{ session.session_name }}</h1>
+        <p class="text-slate-400 mt-1 text-sm">
+            {{ session.device_type|capfirst }} export &middot;
+            Uploaded {{ session.uploaded_at|date:"d M Y" }} &middot;
+            <span class="text-green-400">Analysis complete</span>
+        </p>
+    </div>
+    <a href="{% url 'forensics' session.id %}"
+       class="bg-red-600 hover:bg-red-500 text-white font-bold px-5 py-2.5 rounded-xl transition text-sm">
+        🔍 Forensics Report →
+    </a>
+</div>
+
+{% if not analysis.has_enough_data %}
+<div class="card text-center py-20">
+    <p class="text-5xl mb-4">⚠️</p>
+    <p class="text-white text-xl font-semibold">Not enough data</p>
+    <p class="text-slate-400 mt-2 text-sm">This chat has fewer than 5 messages.</p>
+    <a href="{% url 'home' %}" class="mt-6 inline-block text-green-400 text-sm">← Upload another chat</a>
+</div>
+
+{% else %}
+
+<!-- STAT CARDS -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-green-400">{{ analysis.total_messages }}</p>
+        <p class="text-slate-400 text-xs mt-1">Total Messages</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-blue-400">{{ analysis.total_members }}</p>
+        <p class="text-slate-400 text-xs mt-1">Members</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-purple-400">{{ analysis.total_media }}</p>
+        <p class="text-slate-400 text-xs mt-1">Media Shared</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-yellow-400">{{ analysis.total_links }}</p>
+        <p class="text-slate-400 text-xs mt-1">Links Shared</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-pink-400">{{ analysis.total_emojis }}</p>
+        <p class="text-slate-400 text-xs mt-1">Emojis Used</p>
+    </div>
+</div>
+
+<!-- SECTION 1: MESSAGE ACTIVITY -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">📈 Message Activity</h2>
+    <p class="text-slate-500 text-sm mt-1">Understanding when and how frequently members communicate helps identify peak engagement periods and unusual spikes that may indicate significant events.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="card">
+        <p class="section-title">Messages Over Time</p>
+        <p class="section-desc">Daily message count across the entire chat history. Spikes indicate high-activity events; long gaps suggest the group was dormant.</p>
+        <div id="chart-timeline" style="height:280px;"></div>
+    </div>
+    <div class="card">
+        <p class="section-title">Activity by Hour of Day</p>
+        <p class="section-desc">Shows which hours see the most messages. Late-night peaks may indicate urgency or coordination; morning silence often reflects sleeping patterns.</p>
+        <div id="chart-hours" style="height:280px;"></div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+    <div class="card">
+        <p class="section-title">Activity by Day of Week</p>
+        <p class="section-desc">Reveals weekly communication rhythms. Weekday dominance suggests a professional group; weekend peaks suggest casual or social communication.</p>
+        <div id="chart-days" style="height:280px;"></div>
+    </div>
+    <div class="card">
+        <p class="section-title">Activity by Month</p>
+        <p class="section-desc">Monthly distribution shows seasonal or event-driven activity. Months with unusually high volume warrant deeper investigation of content.</p>
+        <div id="chart-months" style="height:280px;"></div>
+    </div>
+</div>
+
+<!-- SECTION 2: HEATMAP -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🗓️ Activity Heatmap</h2>
+    <p class="text-slate-500 text-sm mt-1">The heatmap cross-references month and day-of-week to pinpoint the exact periods of highest activity. Useful for forensic timeline reconstruction.</p>
+</div>
+<div class="card mb-10">
+    <p class="section-title">Month x Day of Week Heatmap</p>
+    <p class="section-desc">Each cell shows total messages for that month on that day. Consistent bright patterns suggest routine communication; isolated bright spots suggest one-time events.</p>
+    <div id="chart-heatmap" style="height:360px;"></div>
+</div>
+
+<!-- SECTION 3: MEMBER ANALYSIS -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">👥 Member Analysis</h2>
+    <p class="text-slate-500 text-sm mt-1">Identifying the most active members and their communication style helps forensic analysts focus investigation on key individuals.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+    <div class="card">
+        <p class="section-title">Top Active Members</p>
+        <p class="section-desc">Members who send the most messages often have the highest influence. Dominant senders may be administrators, key witnesses, or persons of interest.</p>
+        <div id="chart-members" style="height:300px;"></div>
+    </div>
+    <div class="card">
+        <p class="section-title">Average Message Length per Member</p>
+        <p class="section-desc">Longer messages suggest detailed communication. A sudden shift in a member's average length can signal behavioral change worth investigating.</p>
+        <div id="chart-avglength" style="height:300px;"></div>
+    </div>
+</div>
+
+<!-- Top 10 active dates -->
+<div class="card mb-10">
+    <p class="section-title">🔥 Top 10 Most Active Dates</p>
+    <p class="section-desc">Cross-referencing these dates with real-world events can provide crucial context for forensic investigations.</p>
+    <div class="overflow-x-auto mt-2">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-slate-500 border-b border-slate-700 text-xs uppercase tracking-wider">
+                    <th class="text-left py-3 pr-4">#</th>
+                    <th class="text-left py-3 pr-4">Date</th>
+                    <th class="text-left py-3">Messages</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in analysis.top_dates %}
+                <tr class="border-b border-slate-800 hover:bg-slate-800 transition">
+                    <td class="py-3 pr-4 text-slate-500 text-xs">{{ forloop.counter }}</td>
+                    <td class="py-3 pr-4 text-white font-medium">{{ d.date }}</td>
+                    <td class="py-3 text-green-400 font-bold">{{ d.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- SECTION 4: MEDIA -->
+{% if analysis.top_media %}
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🖼️ Media Sharing</h2>
+    <p class="text-slate-500 text-sm mt-1">Media sharing patterns reveal member preferences and can indicate evidence distribution. Disproportionate sharing from one member may warrant closer attention.</p>
+</div>
+<div class="card mb-10">
+    <p class="section-title">Top Media Senders</p>
+    <p class="section-desc">Who shares the most images, videos, and documents.</p>
+    <div id="chart-media" style="height:280px;"></div>
+</div>
+{% endif %}
+
+<!-- SECTION 5: LANGUAGE -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">💬 Language and Vocabulary</h2>
+    <p class="text-slate-500 text-sm mt-1">The words and emojis members use most frequently reveal the group's core interests, topics, and emotional tone.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="card">
+        <p class="section-title">Most Used Words</p>
+        <p class="section-desc">Top 20 most frequent words after filtering stopwords in English and Hindi. Recurring terms reveal dominant topics in this group.</p>
+        <div id="chart-words" style="height:320px;"></div>
+    </div>
+    <div class="card">
+        <p class="section-title">Top Emojis Used</p>
+        <p class="section-desc">Emoji patterns reveal the emotional climate. High laughter emojis suggest casual atmosphere; absence may indicate a formal or tense environment.</p>
+        {% if analysis.top_emojis %}
+        <div class="grid grid-cols-5 gap-3 mt-4">
+            {% for e in analysis.top_emojis %}
+            <div class="bg-slate-800 rounded-xl p-3 text-center hover:bg-slate-700 transition">
+                <p class="text-3xl">{{ e.emoji }}</p>
+                <p class="text-slate-400 text-xs mt-1 font-medium">{{ e.count }}x</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-500 text-sm mt-4">No emojis detected in this chat.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if analysis.wordcloud_img %}
+<div class="card mb-10">
+    <p class="section-title">☁️ Word Cloud</p>
+    <p class="section-desc">Visual representation of word frequency. Larger words appear more often. Gives an instant overview of the group's dominant vocabulary — useful for identifying recurring themes without reading every message.</p>
+    <img src="data:image/png;base64,{{ analysis.wordcloud_img }}"
+         alt="Word Cloud" class="w-full rounded-xl mt-2"
+         style="max-height:400px; object-fit:contain; background:#1e293b;">
+</div>
+{% endif %}
+
+<!-- SECTION 6: SENTIMENT -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">😊 Sentiment Analysis</h2>
+    <p class="text-slate-500 text-sm mt-1">NLP-powered sentiment classification using VADER. Helps identify emotional tensions, conflicts, and behavioral abnormalities across the group.</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div class="card">
+        <p class="section-title">Overall Sentiment Distribution</p>
+        <p class="section-desc">Breakdown of all messages by emotional tone. High negativity may indicate conflict; unusually high positivity can also be a red flag in forensic contexts.</p>
+        {% if analysis.sentiment.available %}
+        <div id="chart-sentiment" style="height:300px;"></div>
+        {% else %}
+        <p class="text-slate-500 text-sm">Run: pip install nltk vaderSentiment</p>
+        {% endif %}
+    </div>
+    <div class="card">
+        <p class="section-title">Per-Member Sentiment Breakdown</p>
+        <p class="section-desc">Each member's emotional profile. Members with consistently negative sentiment or sudden behavioral shifts are worth investigating further.</p>
+        {% if analysis.sentiment.available %}
+        <div id="chart-member-sentiment" style="height:300px;"></div>
+        {% endif %}
+    </div>
+</div>
+
+{% if analysis.sentiment.available and analysis.sentiment.member_sentiment_list %}
+<div class="card mb-10">
+    <p class="section-title">Sentiment Score by Member</p>
+    <p class="section-desc">Each member's emotional fingerprint. Deviations from their personal baseline can indicate stress, deception, or external pressure.</p>
+    <div class="overflow-x-auto mt-2">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-slate-500 border-b border-slate-700 text-xs uppercase tracking-wider">
+                    <th class="text-left py-3 pr-6">Member</th>
+                    <th class="text-left py-3 pr-4">Positive</th>
+                    <th class="text-left py-3 pr-4">Negative</th>
+                    <th class="text-left py-3 pr-4">Neutral</th>
+                    <th class="text-left py-3">Overall Tone</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in analysis.sentiment.member_sentiment_list %}
+                <tr class="border-b border-slate-800 hover:bg-slate-800 transition">
+                    <td class="py-3 pr-6 text-white font-medium text-xs">{{ m.sender }}</td>
+                    <td class="py-3 pr-4 text-green-400 font-semibold">{{ m.positive }}</td>
+                    <td class="py-3 pr-4 text-red-400 font-semibold">{{ m.negative }}</td>
+                    <td class="py-3 pr-4 text-slate-400">{{ m.neutral }}</td>
+                    <td class="py-3">
+                        {% if m.positive > m.negative and m.positive > m.neutral %}
+                        <span class="badge bg-green-900 text-green-300">Positive</span>
+                        {% elif m.negative > m.positive %}
+                        <span class="badge bg-red-900 text-red-300">Negative</span>
+                        {% else %}
+                        <span class="badge bg-slate-700 text-slate-300">Neutral</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- SECTION 7: LINKS -->
+{% if analysis.top_links %}
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🔗 Shared Links</h2>
+    <p class="text-slate-500 text-sm mt-1">Links shared in the group reveal external resources, coordination evidence, or suspicious URLs.</p>
+</div>
+<div class="card mb-10">
+    <p class="section-title">Most Shared Links</p>
+    <p class="section-desc">Links shared multiple times by multiple members indicate coordinated information sharing — a key forensic signal.</p>
+    <div class="space-y-2 mt-2">
+        {% for l in analysis.top_links %}
+        <div class="flex items-center justify-between bg-slate-800 hover:bg-slate-700 rounded-xl p-3 transition">
+            <a href="{{ l.link }}" target="_blank" rel="noopener noreferrer"
+               class="text-blue-400 hover:text-blue-300 text-xs truncate max-w-xl">
+                {{ l.link }}
+            </a>
+            <span class="text-slate-500 text-xs ml-4 shrink-0">{{ l.count }}x</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<!-- PLOTLY CHARTS SCRIPT -->
+<script>
+{% if analysis.has_enough_data %}
+
+var BG = '#1e293b', GRID = '#334155', TICK = '#94a3b8', WHITE = '#e2e8f0';
+var baseLayout = {
+    paper_bgcolor: BG, plot_bgcolor: BG,
+    font: { color: WHITE, size: 11 },
+    xaxis: { gridcolor: GRID, color: TICK, tickfont: { color: TICK } },
+    yaxis: { gridcolor: GRID, color: TICK, tickfont: { color: TICK } },
+    margin: { t:10, r:10, b:50, l:55 },
+};
+var cfg = { responsive: true, displayModeBar: false };
+
+// 1. Timeline
+var d1 = {{ chart_data.msgs_per_day|safe }};
+var t1x = [], t1y = [];
+for (var i=0; i<d1.length; i++) { t1x.push(d1[i].date); t1y.push(d1[i].count); }
+Plotly.newPlot('chart-timeline',
+    [{ x:t1x, y:t1y, type:'scatter', mode:'lines', fill:'tozeroy',
+       line:{color:'#4ade80',width:2}, fillcolor:'rgba(74,222,128,0.15)' }],
+    Object.assign({}, baseLayout, {
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'date' }
+    }), cfg);
+
+// 2. Hours
+var d3 = {{ chart_data.msgs_by_hour|safe }};
+var t3x = [], t3y = [];
+for (var i=0; i<d3.length; i++) { t3x.push(d3[i].hour+':00'); t3y.push(d3[i].count); }
+Plotly.newPlot('chart-hours', [{ x:t3x, y:t3y, type:'bar', marker:{color:'#a78bfa'} }],
+    Object.assign({}, baseLayout), cfg);
+
+// 3. Days
+var d4 = {{ chart_data.msgs_by_day|safe }};
+var t4x = [], t4y = [];
+for (var i=0; i<d4.length; i++) { t4x.push(d4[i].day); t4y.push(d4[i].count); }
+Plotly.newPlot('chart-days', [{ x:t4x, y:t4y, type:'bar', marker:{color:'#f472b6'} }],
+    Object.assign({}, baseLayout), cfg);
+
+// 4. Months
+var d5 = {{ chart_data.msgs_by_month|safe }};
+var t5x = [], t5y = [];
+for (var i=0; i<d5.length; i++) { t5x.push(d5[i].month); t5y.push(d5[i].count); }
+Plotly.newPlot('chart-months', [{ x:t5x, y:t5y, type:'bar', marker:{color:'#fb923c'} }],
+    Object.assign({}, baseLayout, { margin:{t:10,r:10,b:80,l:55} }), cfg);
+
+// 5. Heatmap
+var hM = {{ chart_data.heatmap_months|safe }};
+var hD = {{ chart_data.heatmap_days|safe }};
+var hZ = {{ chart_data.heatmap_z|safe }};
+Plotly.newPlot('chart-heatmap',
+    [{ x:hD, y:hM, z:hZ, type:'heatmap', colorscale:'Greens',
+       showscale:true, colorbar:{ tickfont:{color:WHITE} } }],
+    Object.assign({}, baseLayout, {
+        margin:{t:10,r:80,b:80,l:100},
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'category' },
+        yaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'category', autorange:'reversed' },
+    }), cfg);
+
+// 6. Top members
+var d2 = {{ chart_data.top_members|safe }};
+var t2x = [], t2y = [];
+for (var i=0; i<d2.length; i++) { t2x.push(d2[i].msg_count); t2y.push(d2[i].sender); }
+Plotly.newPlot('chart-members',
+    [{ x:t2x, y:t2y, type:'bar', orientation:'h', marker:{color:'#60a5fa'} }],
+    Object.assign({}, baseLayout, {
+        margin:{t:10,r:20,b:50,l:160},
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK} },
+        yaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'category', automargin:true },
+    }), cfg);
+
+// 7. Avg message length
+var da = {{ chart_data.avg_length_data|safe }};
+var ax = [], ay = [];
+for (var i=0; i<da.length; i++) { ax.push(da[i].avg_length); ay.push(da[i].sender); }
+Plotly.newPlot('chart-avglength',
+    [{ x:ax, y:ay, type:'bar', orientation:'h', marker:{color:'#34d399'} }],
+    Object.assign({}, baseLayout, {
+        margin:{t:10,r:20,b:50,l:160},
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK} },
+        yaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'category', automargin:true },
+    }), cfg);
+
+// 8. Media
+{% if analysis.top_media %}
+var d8 = {{ chart_data.top_media|safe }};
+var t8x = [], t8y = [];
+for (var i=0; i<d8.length; i++) { t8x.push(d8[i].sender); t8y.push(d8[i].count); }
+Plotly.newPlot('chart-media', [{ x:t8x, y:t8y, type:'bar', marker:{color:'#f59e0b'} }],
+    Object.assign({}, baseLayout, { margin:{t:10,r:10,b:100,l:55} }), cfg);
+{% endif %}
+
+// 9. Words
+var d6 = {{ chart_data.top_words|safe }};
+var t6x = [], t6y = [];
+for (var i=0; i<20&&i<d6.length; i++) { t6x.push(d6[i].count); t6y.push(d6[i].word); }
+Plotly.newPlot('chart-words',
+    [{ x:t6x, y:t6y, type:'bar', orientation:'h', marker:{color:'#38bdf8'} }],
+    Object.assign({}, baseLayout, {
+        margin:{t:10,r:10,b:50,l:100},
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK} },
+        yaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, type:'category', automargin:true },
+    }), cfg);
+
+// 10. Sentiment pie
+{% if analysis.sentiment.available %}
+var d7 = {{ chart_data.sentiment|safe }};
+Plotly.newPlot('chart-sentiment',
+    [{ values:[d7.positive,d7.negative,d7.neutral],
+       labels:['Positive','Negative','Neutral'], type:'pie', hole:0.45,
+       marker:{colors:['#4ade80','#f87171','#94a3b8']},
+       textfont:{color:WHITE} }],
+    Object.assign({}, baseLayout, {
+        margin:{t:20,r:20,b:20,l:20},
+        showlegend:true, legend:{font:{color:WHITE}},
+    }), cfg);
+
+// 11. Per-member sentiment stacked bar
+var ms = {{ chart_data.member_sentiment_list|safe }};
+var msN=[], msP=[], msNg=[], msNu=[];
+for (var i=0; i<ms.length; i++) {
+    msN.push(ms[i].sender);
+    msP.push(ms[i].positive);
+    msNg.push(ms[i].negative);
+    msNu.push(ms[i].neutral);
+}
+Plotly.newPlot('chart-member-sentiment',
+    [
+        { name:'Positive', x:msN, y:msP, type:'bar', marker:{color:'#4ade80'} },
+        { name:'Negative', x:msN, y:msNg, type:'bar', marker:{color:'#f87171'} },
+        { name:'Neutral',  x:msN, y:msNu, type:'bar', marker:{color:'#94a3b8'} },
+    ],
+    Object.assign({}, baseLayout, {
+        barmode:'stack',
+        margin:{t:10,r:10,b:100,l:55},
+        legend:{font:{color:WHITE}},
+        xaxis:{ gridcolor:GRID, color:TICK, tickfont:{color:TICK}, tickangle:-30 },
+    }), cfg);
+{% endif %}
+
+{% endif %}
+</script>
+
+{% endblock %}

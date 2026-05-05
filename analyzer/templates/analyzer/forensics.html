@@ -1,0 +1,470 @@
+{% extends 'analyzer/base.html' %}
+{% block title %}Forensics — {{ session.session_name }}{% endblock %}
+
+{% block content %}
+
+<!-- Header -->
+<div class="flex flex-wrap items-start justify-between gap-4 mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-white">🔍 Forensics Report</h1>
+        <p class="text-slate-400 mt-1 text-sm">{{ session.session_name }}</p>
+    </div>
+    <a href="{% url 'dashboard' session.id %}"
+       class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-xl transition text-sm">
+        ← Dashboard
+    </a>
+</div>
+
+<!-- Stat cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-red-400">{{ data.flagged_count }}</p>
+        <p class="text-slate-400 text-xs mt-1">Flagged Messages</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-yellow-400">{{ data.all_links|length }}</p>
+        <p class="text-slate-400 text-xs mt-1">Total Links Found</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-blue-400">{{ data.top_links|length }}</p>
+        <p class="text-slate-400 text-xs mt-1">Unique Links</p>
+    </div>
+    <div class="stat-card text-center">
+        <p class="text-3xl font-bold text-purple-400">{{ data.graph_data.nodes|length }}</p>
+        <p class="text-slate-400 text-xs mt-1">Members Mapped</p>
+    </div>
+</div>
+
+<!-- SECTION 1: MESSAGE SEARCH -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🔎 Message Search</h2>
+    <p class="text-slate-500 text-sm mt-1">Search through all messages in this chat. Filter by keyword, date, or sender. Useful for finding specific evidence or tracing the timeline of events.</p>
+</div>
+
+<div class="card mb-10">
+    <p class="section-title">Search Chat Messages</p>
+    <p class="section-desc">Enter any keyword to find messages containing it. Combine with a date or sender to narrow results. Results are capped at 100 for performance.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+
+        <!-- Keyword search -->
+        <input type="text" id="search-query" placeholder="Search keyword..."
+               class="bg-slate-800 border border-slate-600 text-white text-sm px-4 py-2.5 rounded-xl
+                      focus:outline-none focus:border-green-400 transition w-full">
+
+        <!-- Sender dropdown -->
+        <select id="search-sender"
+                class="bg-slate-800 border border-slate-600 text-white text-sm px-4 py-2.5 rounded-xl
+                       focus:outline-none focus:border-green-400 transition w-full">
+            <option value="">All Senders</option>
+            {% for sender in senders %}
+            <option value="{{ sender }}">{{ sender }}</option>
+            {% endfor %}
+        </select>
+
+        <!-- Date picker — only valid chat dates enabled -->
+        <div class="relative">
+            <select id="search-date"
+                    class="bg-slate-800 border border-slate-600 text-white text-sm px-4 py-2.5 rounded-xl
+                           focus:outline-none focus:border-green-400 transition w-full appearance-none">
+                <option value="">All Dates</option>
+            </select>
+        </div>
+
+    </div>
+
+    <div class="flex gap-3 mb-4">
+        <button onclick="runSearch()"
+                class="bg-green-500 hover:bg-green-400 text-black font-bold px-6 py-2.5 rounded-xl text-sm transition">
+            Search →
+        </button>
+        <button onclick="clearSearch()"
+                class="bg-slate-700 hover:bg-slate-600 text-white px-5 py-2.5 rounded-xl text-sm transition">
+            Clear
+        </button>
+    </div>
+
+    <div id="search-status" class="text-slate-500 text-xs mb-3"></div>
+    <div id="search-results" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+</div>
+
+<!-- SECTION 2: FLAGGED MESSAGES -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🚨 Flagged Messages</h2>
+    <p class="text-slate-500 text-sm mt-1">Messages containing keywords associated with criminal or suspicious activity. Each message shows surrounding context and can be translated into any language for international investigations.</p>
+</div>
+
+<div class="card mb-10">
+    <p class="section-title">Criminal Keyword Detection</p>
+    <p class="section-desc">The system scans every message against 50+ criminal keywords using whole-word matching to reduce false positives. Context messages before and after each flagged message are shown to help analysts understand intent.</p>
+
+    {% if data.flagged_messages %}
+    <div class="space-y-4 mt-4">
+        {% for msg in data.flagged_messages %}
+        <div class="border border-red-800 rounded-xl overflow-hidden">
+
+            <!-- Context before -->
+            {% if msg.context_before %}
+            <div class="bg-slate-800 px-4 py-2 border-b border-slate-700">
+                <p class="text-slate-500 text-xs mb-1 uppercase tracking-wider">Before</p>
+                {% for ctx in msg.context_before %}
+                <div class="flex gap-2 text-xs py-0.5">
+                    <span class="text-slate-500 shrink-0">{{ ctx.timestamp }}</span>
+                    <span class="text-slate-400 font-medium shrink-0">{{ ctx.sender }}:</span>
+                    <span class="text-slate-400">{{ ctx.content }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Flagged message -->
+            <div class="bg-red-950 px-4 py-3">
+                <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+                    <div class="flex items-center gap-3">
+                        <span class="text-red-300 font-semibold text-sm">{{ msg.sender }}</span>
+                        <span class="text-slate-500 text-xs">{{ msg.timestamp }}</span>
+                    </div>
+                    <div class="flex gap-1.5 flex-wrap">
+                        {% for kw in msg.keywords %}
+                        <span class="bg-red-800 text-red-200 text-xs px-2 py-0.5 rounded-full font-medium">{{ kw }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <p class="text-white text-sm mb-3 leading-relaxed">{{ msg.content }}</p>
+
+                <!-- Translate controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="lang-{{ forloop.counter }}"
+                            class="bg-slate-800 border border-slate-600 text-slate-300 text-xs px-3 py-1.5 rounded-lg focus:outline-none">
+                        {% for code, name in data.translate_languages %}
+                        <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button onclick="translateMessage('{{ msg.content|escapejs }}', 'lang-{{ forloop.counter }}', 'translation-{{ forloop.counter }}')"
+                            class="bg-blue-700 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition font-medium">
+                        🌐 Translate
+                    </button>
+                    <span id="translation-{{ forloop.counter }}-loading" class="text-slate-500 text-xs hidden">Translating...</span>
+                </div>
+                <div id="translation-{{ forloop.counter }}"
+                     class="mt-2 text-blue-200 text-sm bg-blue-950 border border-blue-800 rounded-lg px-3 py-2 hidden"></div>
+            </div>
+
+            <!-- Context after -->
+            {% if msg.context_after %}
+            <div class="bg-slate-800 px-4 py-2 border-t border-slate-700">
+                <p class="text-slate-500 text-xs mb-1 uppercase tracking-wider">After</p>
+                {% for ctx in msg.context_after %}
+                <div class="flex gap-2 text-xs py-0.5">
+                    <span class="text-slate-500 shrink-0">{{ ctx.timestamp }}</span>
+                    <span class="text-slate-400 font-medium shrink-0">{{ ctx.sender }}:</span>
+                    <span class="text-slate-400">{{ ctx.content }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-8">
+        <p class="text-3xl mb-2">✅</p>
+        <p class="text-white font-medium">No flagged messages found</p>
+        <p class="text-slate-400 text-sm mt-1">No criminal keywords detected in this chat.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- SECTION 3: LINK ATTRIBUTION -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🔗 Link Attribution</h2>
+    <p class="text-slate-500 text-sm mt-1">Every link shared in the group is tracked back to its sender with a timestamp. Links shared multiple times by multiple members are a key forensic indicator of coordinated information sharing.</p>
+</div>
+
+{% if data.top_links %}
+<div class="card mb-10">
+    <p class="section-title">Most Shared Links with Sender Details</p>
+    <p class="section-desc">Each link shows exactly who shared it and when. Members who repeatedly share the same external resource warrant closer investigation.</p>
+    <div class="space-y-4 mt-2">
+        {% for l in data.top_links %}
+        <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                <a href="{{ l.link }}" target="_blank" rel="noopener noreferrer"
+                   class="text-blue-400 hover:text-blue-300 text-xs truncate max-w-lg">
+                    {{ l.link }}
+                </a>
+                <span class="text-green-400 text-xs ml-4 shrink-0 font-bold">{{ l.count }}x</span>
+            </div>
+            <div class="px-4 py-3">
+                <p class="text-slate-500 text-xs mb-2 uppercase tracking-wider">Shared by:</p>
+                <div class="space-y-1">
+                    {% for s in l.senders %}
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="w-2 h-2 rounded-full bg-green-400 shrink-0"></span>
+                        <span class="text-white font-medium">{{ s.sender }}</span>
+                        <span class="text-slate-500">{{ s.timestamp }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card mb-10">
+    <p class="text-slate-400 text-sm">No links found in this chat.</p>
+</div>
+{% endif %}
+
+<!-- SECTION 4: KNOWLEDGE GRAPH -->
+<div class="mb-4">
+    <h2 class="text-xl font-bold text-white">🕸️ Knowledge Graph</h2>
+    <p class="text-slate-500 text-sm mt-1">Maps communication flows between the top 10 most active members. Nodes represent members and edges show who replied to whom — thicker edges indicate more frequent interaction. Members acting as bridges between sub-groups may be key persons of interest.</p>
+</div>
+
+<div class="card mb-10">
+    <p class="section-title">Communication Flow — Top 10 Members</p>
+    <p class="section-desc">Drag nodes to rearrange. Members with many connections are likely administrators or central figures. Isolated nodes that communicate with only one other member can be suspicious in a group context.</p>
+    <div id="knowledge-graph" style="height:500px; background:#0f172a; border-radius:12px;"></div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+var SESSION_ID    = {{ session.id }};
+var TRANSLATE_URL = "{% url 'translate_message' %}";
+var SEARCH_URL    = "{% url 'search_messages' session.id %}";
+var CSRF_TOKEN    = "{{ csrf_token }}";
+
+// ── POPULATE DATE DROPDOWN WITH ONLY VALID CHAT DATES ─────
+var activeDates = {{ active_dates|safe }};
+var dateSelect  = document.getElementById('search-date');
+for (var i = 0; i < activeDates.length; i++) {
+    var d    = activeDates[i];
+    var opt  = document.createElement('option');
+    opt.value       = d;
+    // Format nicely: 2024-01-15 → 15 Jan 2024
+    var parts = d.split('-');
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    opt.textContent = parts[2] + ' ' + months[parseInt(parts[1]) - 1] + ' ' + parts[0];
+    dateSelect.appendChild(opt);
+}
+
+// ── SEARCH ────────────────────────────────────────────────
+function runSearch() {
+    var query  = document.getElementById('search-query').value.trim();
+    var date   = document.getElementById('search-date').value;
+    var sender = document.getElementById('search-sender').value;
+
+    if (!query && !date && !sender) {
+        document.getElementById('search-status').textContent = 'Please select at least one filter.';
+        return;
+    }
+
+    document.getElementById('search-status').textContent = 'Searching...';
+    document.getElementById('search-results').innerHTML  = '';
+
+    var params = new URLSearchParams();
+    if (query)  params.append('q', query);
+    if (date)   params.append('date', date);
+    if (sender) params.append('sender', sender);
+
+    fetch(SEARCH_URL + '?' + params.toString())
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var statusEl  = document.getElementById('search-status');
+            var resultsEl = document.getElementById('search-results');
+
+            if (data.count === 0) {
+                statusEl.textContent = 'No messages found matching your filters.';
+                return;
+            }
+
+            statusEl.textContent = data.count + ' message(s) found' +
+                (data.count === 100 ? ' (showing first 100)' : '') + ':';
+
+            var html = '';
+            for (var i = 0; i < data.results.length; i++) {
+                var msg     = data.results[i];
+                var content = escapeHtml(msg.content);
+
+                // Highlight keyword
+                var q = document.getElementById('search-query').value.trim();
+                if (q) {
+                    var re  = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+                    content = content.replace(re, '<mark class="bg-yellow-400 text-black rounded px-0.5">$1</mark>');
+                }
+
+                html += '<div class="bg-slate-800 rounded-xl p-3 border border-slate-700">';
+                html += '<div class="flex items-center gap-3 mb-1.5">';
+                html += '<span class="text-green-400 font-semibold text-xs">' + escapeHtml(msg.sender) + '</span>';
+                html += '<span class="text-slate-500 text-xs">' + msg.timestamp + '</span>';
+                html += '</div>';
+                html += '<p class="text-white text-sm leading-relaxed">' + content + '</p>';
+                html += '</div>';
+            }
+            resultsEl.innerHTML = html;
+        })
+        .catch(function() {
+            document.getElementById('search-status').textContent = 'Search failed. Please try again.';
+        });
+}
+
+function clearSearch() {
+    document.getElementById('search-query').value  = '';
+    document.getElementById('search-date').value   = '';
+    document.getElementById('search-sender').value = '';
+    document.getElementById('search-status').textContent = '';
+    document.getElementById('search-results').innerHTML  = '';
+}
+
+function escapeHtml(text) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(text));
+    return d.innerHTML;
+}
+
+document.getElementById('search-query').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') runSearch();
+});
+
+// ── TRANSLATE ─────────────────────────────────────────────
+function translateMessage(text, langSelectId, outputId) {
+    var targetLang = document.getElementById(langSelectId).value;
+    var outputEl   = document.getElementById(outputId);
+    var loadingEl  = document.getElementById(outputId + '-loading');
+
+    outputEl.classList.add('hidden');
+    loadingEl.classList.remove('hidden');
+
+    fetch(TRANSLATE_URL, {
+        method : 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken' : CSRF_TOKEN,
+        },
+        body: JSON.stringify({ text: text, target_lang: targetLang }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        loadingEl.classList.add('hidden');
+        outputEl.textContent = data.translated || ('Error: ' + (data.error || 'Unknown'));
+        outputEl.classList.remove('hidden');
+    })
+    .catch(function() {
+        loadingEl.classList.add('hidden');
+        outputEl.textContent = 'Translation failed. Please try again.';
+        outputEl.classList.remove('hidden');
+    });
+}
+
+// ── KNOWLEDGE GRAPH ───────────────────────────────────────
+var graphData = {{ data.graph_data|safe }};
+var container = document.getElementById('knowledge-graph');
+var width     = container.clientWidth || 700;
+var height    = 500;
+
+var svg = d3.select('#knowledge-graph')
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height);
+
+if (!graphData.nodes || graphData.nodes.length === 0) {
+    svg.append('text')
+        .attr('x', width / 2).attr('y', height / 2)
+        .attr('text-anchor', 'middle')
+        .attr('fill', '#94a3b8').attr('font-size', 14)
+        .text('Not enough data to build knowledge graph');
+} else {
+    var color = d3.scaleOrdinal(d3.schemeTableau10);
+
+    var simulation = d3.forceSimulation(graphData.nodes)
+        .force('link', d3.forceLink(graphData.edges)
+            .id(function(d) { return d.id; }).distance(130))
+        .force('charge', d3.forceManyBody().strength(-400))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide(35));
+
+    svg.append('defs').append('marker')
+        .attr('id', 'arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 28).attr('refY', 0)
+        .attr('markerWidth', 6).attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#4ade80');
+
+    var link = svg.append('g')
+        .selectAll('line')
+        .data(graphData.edges)
+        .join('line')
+        .attr('stroke', '#334155')
+        .attr('stroke-width', function(d) { return Math.min(Math.sqrt(d.weight) * 1.5, 8); })
+        .attr('marker-end', 'url(#arrow)');
+
+    var node = svg.append('g')
+        .selectAll('circle')
+        .data(graphData.nodes)
+        .join('circle')
+        .attr('r', 22)
+        .attr('fill', function(d, i) { return color(i); })
+        .attr('stroke', '#0f172a')
+        .attr('stroke-width', 3)
+        .style('cursor', 'grab')
+        .call(d3.drag()
+            .on('start', function(e, d) {
+                if (!e.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x; d.fy = d.y;
+            })
+            .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
+            .on('end', function(e, d) {
+                if (!e.active) simulation.alphaTarget(0);
+                d.fx = null; d.fy = null;
+            }));
+
+    node.append('title').text(function(d) { return d.id; });
+
+    var label = svg.append('g')
+        .selectAll('text')
+        .data(graphData.nodes)
+        .join('text')
+        .text(function(d) { return d.id.split(' ')[0]; })
+        .attr('font-size', 10)
+        .attr('fill', '#f1f5f9')
+        .attr('text-anchor', 'middle')
+        .attr('dy', 38)
+        .style('pointer-events', 'none');
+
+    var edgeLabel = svg.append('g')
+        .selectAll('text')
+        .data(graphData.edges)
+        .join('text')
+        .text(function(d) { return d.weight; })
+        .attr('font-size', 9)
+        .attr('fill', '#64748b')
+        .attr('text-anchor', 'middle')
+        .style('pointer-events', 'none');
+
+    simulation.on('tick', function() {
+        link
+            .attr('x1', function(d) { return d.source.x; })
+            .attr('y1', function(d) { return d.source.y; })
+            .attr('x2', function(d) { return d.target.x; })
+            .attr('y2', function(d) { return d.target.y; });
+        node
+            .attr('cx', function(d) { return d.x; })
+            .attr('cy', function(d) { return d.y; });
+        label
+            .attr('x', function(d) { return d.x; })
+            .attr('y', function(d) { return d.y; });
+        edgeLabel
+            .attr('x', function(d) { return (d.source.x + d.target.x) / 2; })
+            .attr('y', function(d) { return (d.source.y + d.target.y) / 2; });
+    });
+}
+</script>
+
+{% endblock %}
