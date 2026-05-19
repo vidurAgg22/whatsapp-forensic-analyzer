@@ -11,7 +11,7 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 
 ## 🌐 Live Demo
 
-> **[https://your-live-link.railway.app](https://your-live-link.railway.app)**
+> [**https://your-live-link.railway.app**](https://your-live-link.railway.app)
 > *(Try the built-in sample chats — no upload required)*
 
 ---
@@ -19,7 +19,7 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 ## 📸 Screenshots
 
 | Landing Page | EDA Dashboard | Forensics Report |
-|---|---|---|
+|:---:|:---:|:---:|
 | ![Home](screenshots/home.png) | ![Dashboard](screenshots/dashboard.png) | ![Forensics](screenshots/forensics.png) |
 
 ---
@@ -27,6 +27,7 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 ## ✨ Features
 
 ### 📊 Exploratory Data Analysis
+
 - **Message frequency over time** — Line chart showing daily message volume across the entire chat history
 - **Activity heatmap** — Month × Day-of-week heatmap to pinpoint the most communicative periods
 - **Top active members** — Horizontal bar chart of the most frequent senders
@@ -39,12 +40,14 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 - **Emoji leaderboard** — Visual grid of top 10 emojis with counts
 
 ### 😊 Sentiment Analysis
+
 - **VADER NLP** — Every message classified as positive, negative, or neutral
 - **Overall sentiment pie chart** — Group-wide emotional distribution
 - **Per-member stacked bar chart** — Each member's emotional profile side by side
 - **Sentiment table** — Detailed breakdown with tone badge (Positive / Negative / Neutral) per member
 
 ### 🔍 Forensic Analysis
+
 - **Criminal keyword detection** — 50+ keywords scanned using whole-word regex matching
 - **Message context** — 2 messages before and after each flagged message shown automatically
 - **Multi-language translation** — Each flagged message can be translated to 15+ languages (English, Hindi, French, Arabic, Chinese, Japanese, etc.) using free Google Translate API
@@ -54,13 +57,16 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 - **Message search** — Search by keyword, sender (dropdown), or date (only valid chat dates shown). Results highlighted in yellow
 
 ### 🧪 Built-in Sample Chats
+
 Four ready-to-use sample chats — no upload needed:
+
 - 🎓 College Study Group (Android, Hindi+English)
 - 💼 Business Team (iPhone, professional)
 - 🚨 Suspicious Group (forensics demo with criminal keywords)
 - 💻 Real Coders Dataset (11,000+ messages, 237 members, used in the published paper)
 
 ### 🔧 Infrastructure
+
 - Supports both **Android** and **iPhone** WhatsApp export formats
 - Handles **multi-line messages**, **invisible unicode characters**, **emoji mentions**
 - Robust datetime parser handles all regional WhatsApp timestamp formats
@@ -73,7 +79,7 @@ Four ready-to-use sample chats — no upload needed:
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
-|---|---|
+|:---|:---|
 | Backend | Django 4.x (Python) |
 | Database | SQLite (local) / PostgreSQL (production) |
 | NLP | NLTK VADER |
@@ -89,12 +95,14 @@ Four ready-to-use sample chats — no upload needed:
 ## 🚀 Local Setup
 
 ### 1. Clone the repository
+
 ```bash
 git clone https://github.com/yourusername/whatsapp-forensic-analyzer.git
 cd whatsapp-forensic-analyzer
 ```
 
 ### 2. Create and activate virtual environment
+
 ```bash
 python -m venv venv
 
@@ -106,28 +114,34 @@ source venv/bin/activate
 ```
 
 ### 3. Install dependencies
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Set up environment variables
+
 Create a `.env` file in the root directory:
+
 ```
 SECRET_KEY=your-django-secret-key-here
 DEBUG=True
 ```
 
 Generate a secret key:
+
 ```bash
 python -c "from django.utils.crypto import get_random_string; print(get_random_string(50))"
 ```
 
 ### 5. Run migrations
+
 ```bash
 python manage.py migrate
 ```
 
 ### 6. Start the server
+
 ```bash
 python manage.py runserver
 ```
@@ -155,11 +169,13 @@ psycopg2-binary
 ```
 
 After creating it, install with:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 Also download the NLTK vader lexicon:
+
 ```bash
 python -c "import nltk; nltk.download('vader_lexicon')"
 ```
@@ -169,12 +185,14 @@ python -c "import nltk; nltk.download('vader_lexicon')"
 ## 📱 How to Export a WhatsApp Chat
 
 **Android:**
+
 1. Open the group chat
 2. Tap ⋮ → More → Export chat
 3. Choose **Without Media**
 4. Save the `.txt` file
 
 **iPhone:**
+
 1. Open the group chat
 2. Tap the group name at the top
 3. Scroll down → Export Chat
@@ -221,7 +239,8 @@ This project implements and extends the methodology described in the published p
 In: Nanda, S.J., et al. (eds.) Data Science and Applications. Lecture Notes in Networks and Systems, vol 1265. Springer Nature Singapore.
 🔗 https://link.springer.com/chapter/10.1007/978-981-96-2299-3_3
 
-### Key extensions beyond the paper:
+### Key extensions beyond the paper
+
 - Web application interface (paper used Jupyter notebooks / Streamlit)
 - Multi-language translation with language selection (paper used English only)
 - Message search with keyword highlighting, sender filter, and date filter
@@ -237,6 +256,7 @@ In: Nanda, S.J., et al. (eds.) Data Science and Applications. Lecture Notes in N
 ## 📊 Dataset
 
 The **Coders Group** sample included in this project is a modified version of the dataset used in the original paper:
+
 - Source: [GitHub — tusharnankani/whatsapp-chat-data-analysis](https://github.com/tusharnankani/whatsapp-chat-data-analysis)
 - Modified: Member names anonymized, date range trimmed for the paper
 - Contains: 11,010 messages from 237 members (Jan–Aug 2020)
@@ -245,12 +265,14 @@ The **Coders Group** sample included in this project is a modified version of th
 
 ## 🚢 Deployment (Railway.app — Free Tier)
 
-### 1. Create a `Procfile` in the root:
+### 1. Create a `Procfile` in the root
+
 ```
 web: gunicorn core.wsgi --log-file -
 ```
 
-### 2. Update `settings.py` for production:
+### 2. Update `settings.py` for production
+
 ```python
 import os
 from dotenv import load_dotenv
@@ -277,12 +299,14 @@ DATABASES = {
 }
 ```
 
-### 3. Add to `requirements.txt`:
+### 3. Add to `requirements.txt`
+
 ```
 dj-database-url
 ```
 
-### 4. Deploy:
+### 4. Deploy
+
 - Push to GitHub
 - Connect repo to Railway.app
 - Add environment variables: `SECRET_KEY`, `DEBUG=False`
@@ -293,7 +317,7 @@ dj-database-url
 ## 👨‍💻 Authors
 
 - **Vidur Agarwal** — Implementation & Web Application
-🔗 [GitHub](https://github.com/vidurAgg22) · [LinkedIn](https://linkedin.com/in/viduragarwal1)
+  🔗 [GitHub](https://github.com/vidurAgg22) · [LinkedIn](https://linkedin.com/in/viduragarwal1)
 - **Sonakshi Vij, Vinay Aggarwal, Vaibhav Goyal** — Original research paper
 
 ---
@@ -304,4 +328,4 @@ This project is for educational and research purposes. The implementation is ori
 
 ---
 
-## ⭐ If you found this useful, please star the repository!
+⭐ If you found this useful, please star the repository!
