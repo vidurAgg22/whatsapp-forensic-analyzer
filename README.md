@@ -11,7 +11,7 @@ A full-stack web application for forensic analysis of WhatsApp group chats using
 
 ## 🌐 Live Demo
 
-> [**https://your-live-link.railway.app**](https://your-live-link.railway.app)
+> [**[https://your-live-link.railway.app](https://whatsapp-forensic-analyzer-production.up.railway.app/)**](https://your-live-link.railway.app)
 > *(Try the built-in sample chats — no upload required)*
 
 ---
